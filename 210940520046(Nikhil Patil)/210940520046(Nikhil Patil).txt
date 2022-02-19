@@ -1,0 +1,342 @@
+
+				**Project First***
+Q1.
+Ans==>
+
+ public ActionResult Index()
+        {
+            List<Product> l = new List<Product>();
+            SqlConnection sq = new SqlConnection();
+            sq.ConnectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ProductDB;Integrated Security=True;";
+            sq.Open();
+            SqlCommand sc = new SqlCommand();
+            sc.Connection = sq;
+            sc.CommandType = System.Data.CommandType.StoredProcedure;
+            sc.CommandText = "selectProduct";
+            SqlDataReader dr = sc.ExecuteReader();
+            while (dr.Read())
+            {
+                l.Add(new Product { ProductId=(int)dr["ProductId"], ProductName = (string)dr["ProductName"], Rate = (decimal)dr["Rate"], Description = (string)dr["Description"], CategoryName = (string)dr["CategoryName"] });
+
+            }
+            dr.Close();
+            sq.Close();
+            return View(l);
+        }
+--------------------
+selectProduct (Stored procedure):
+CREATE PROCEDURE [dbo].[selectProduct]
+AS
+	SELECT * from Product
+RETURN 0
+
+==============================================================
+
+Q2.
+Ans==->
+-- CONTROLLER code:
+ 
+ // GET: Products/Edit/5
+        public ActionResult Edit(int id)
+        {
+            Product p = new Product();
+            SqlConnection sq = new SqlConnection();
+            sq.ConnectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ProductDB;Integrated Security=True;";
+            sq.Open();
+            SqlCommand sc = new SqlCommand();
+            sc.Connection = sq;
+            sc.CommandType = System.Data.CommandType.Text;
+            sc.CommandText = "select * from Product where ProductId=@id";
+            sc.Parameters.AddWithValue("@id",id);
+            SqlDataReader dr = sc.ExecuteReader();
+            while (dr.Read())
+            {
+               p = new Product { ProductId = (int)dr["ProductId"], ProductName = (string)dr["ProductName"], Rate = (decimal)dr["Rate"], Description = (string)dr["Description"], CategoryName = (string)dr["CategoryName"] };
+
+            }
+            dr.Close();
+            sq.Close();
+            return View(p);
+        }
+
+        // POST: Products/Edit/5
+        [HttpPost]
+        public ActionResult Edit(int id, Product p1)
+        {
+            SqlConnection sq = new SqlConnection();
+            sq.ConnectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ProductDB;Integrated Security=True;";
+            sq.Open();
+            SqlCommand sc = new SqlCommand();
+            sc.Connection = sq;
+            sc.CommandType = System.Data.CommandType.StoredProcedure;
+            sc.CommandText = "updateProduct";
+            sc.Parameters.AddWithValue("@ProductName", p1.ProductName);
+            sc.Parameters.AddWithValue("@Rate", p1.Rate);
+            sc.Parameters.AddWithValue("@Description", p1.Description);
+            sc.Parameters.AddWithValue("@CategoryName", p1.CategoryName);
+            sc.Parameters.AddWithValue("@ProductId", p1.ProductId);
+           
+            sc.ExecuteNonQuery();
+            sq.Close();
+            return RedirectToAction("Index");
+        }
+
+-- Product.cs code:
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Web;
+
+namespace ProductApp.Models
+{
+    public class Product
+    {
+        [Key]
+        public int ProductId { get; set; }
+        
+        [Required (ErrorMessage ="Please Enter ProductName")]
+        public string ProductName { get; set; }
+
+        [Required(ErrorMessage = "Please Enter Rate")]
+        public decimal Rate { get; set; }
+
+        [Required(ErrorMessage = "Please Enter Description")]
+        public string Description { get; set; }
+
+        [Required(ErrorMessage = "Please Enter CategoryName")]
+        public string CategoryName { get; set; }
+    }
+}
+
+-- updateProduct (Stored Procedure):
+
+CREATE PROCEDURE [dbo].[updateProduct]
+	@ProductName varchar(50),
+	@Rate decimal(18,2),
+	 @Description varchar(200),
+	 @CategoryName varchar(50),
+	 @ProductId int
+
+AS
+	update Product set [ProductName]=@ProductName, [Rate]=@Rate, [Description]=@Description, [CategoryName]=@CategoryName where [ProductId]=@ProductId
+RETURN 0
+
+=====================================================================================================
+Q3.
+Ans==->
+
+-- CONTROLLER code:
+ public ActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Products/Create
+        [HttpPost]
+        public ActionResult Create(Product p1)
+        {
+          
+            SqlConnection sq = new SqlConnection();
+            sq.ConnectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ProductDB;Integrated Security=True;";
+            sq.Open();
+            SqlCommand sc = new SqlCommand();
+            sc.Connection = sq;
+            sc.CommandType = System.Data.CommandType.StoredProcedure;
+            sc.CommandText = "insertProduct";
+            sc.Parameters.AddWithValue("@ProductName", p1.ProductName);
+            sc.Parameters.AddWithValue("@Rate", p1.Rate);
+            sc.Parameters.AddWithValue("@Description", p1.Description);
+            sc.Parameters.AddWithValue("@CategoryName", p1.CategoryName);
+            sc.ExecuteNonQuery();
+            sq.Close();
+            return RedirectToAction("Index");
+        }
+
+-- insertProduct(Stored Procedure):=
+
+
+CREATE PROCEDURE [dbo].[insertProduct]
+	
+	@ProductName varchar(50),
+	@Rate decimal(18,2),
+	 @Description varchar(200),
+	 @CategoryName varchar(50)
+
+AS
+	insert into Product values( @ProductName, @Rate, @Description, @CategoryName)
+RETURN 0
+
+
+===============================================================================================================================
+					**Project Second**(API)
+
+Q5.
+Ans==>
+
+-- CONTROLLER code:=
+
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Entity;
+using System.Data.Entity.Infrastructure;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+using System.Web.Http.Description;
+using ProductAppApi;
+
+namespace ProductAppApi.Controllers
+{
+    public class ProductsController : ApiController
+    {
+        private ProductDBEntities db = new ProductDBEntities();
+
+        // GET: api/Products
+        public IQueryable<Product> GetProducts()
+        {
+            return db.Products;
+        }
+
+        // GET: api/Products/5
+        [ResponseType(typeof(Product))]
+        public IHttpActionResult GetProduct(int id)
+        {
+            Product product = db.Products.Find(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(product);
+        }
+
+        // PUT: api/Products/5
+        [ResponseType(typeof(void))]
+        public IHttpActionResult PutProduct(int id, Product product)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != product.ProductId)
+            {
+                return BadRequest();
+            }
+
+            db.Entry(product).State = EntityState.Modified;
+
+            try
+            {
+                db.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ProductExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return StatusCode(HttpStatusCode.NoContent);
+        }
+
+        // POST: api/Products
+        [ResponseType(typeof(Product))]
+        public IHttpActionResult PostProduct(Product product)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            db.Products.Add(product);
+            db.SaveChanges();
+
+            return CreatedAtRoute("DefaultApi", new { id = product.ProductId }, product);
+        }
+
+        // DELETE: api/Products/5
+        [ResponseType(typeof(Product))]
+        public IHttpActionResult DeleteProduct(int id)
+        {
+            Product product = db.Products.Find(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            db.Products.Remove(product);
+            db.SaveChanges();
+
+            return Ok(product);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                db.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private bool ProductExists(int id)
+        {
+            return db.Products.Count(e => e.ProductId == id) > 0;
+        }
+    }
+}
+
+
+-- Product.cs code:=
+
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated from a template.
+//
+//     Manual changes to this file may cause unexpected behavior in your application.
+//     Manual changes to this file will be overwritten if the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+namespace ProductAppApi
+{
+    using System;
+    using System.Collections.Generic;
+    
+    public partial class Product
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; }
+        public decimal Rate { get; set; }
+        public string Description { get; set; }
+        public string CategoryName { get; set; }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
